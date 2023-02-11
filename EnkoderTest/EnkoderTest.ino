@@ -7,14 +7,13 @@ const int CLK = 11; //lilla
 const int DO  = 10; //blå digital output from encoder
 const int CS  = 9;  //Grønn (gul)
 
-AbsEncoder Coder(CLK, DO, CS, 2);
+AbsEncoder Coder(CLK, DO, CS);
 
 //bool data[2][16];
 
 void setup() {
   Serial.begin(9600);
   while (!Serial); // wait for serial to establish
-  Serial.println("serial ready");
 
   Coder.begin();
 }
@@ -32,8 +31,6 @@ void loop() {
   //Coder.printRaw(0);
 
   //Serial.println(Coder.getAnalogData(0));
-
-
 
   //Serial.println(dataList[0]);
   //Serial.println(dataList[1]);
