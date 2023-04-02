@@ -12,23 +12,17 @@ char pass[] = "";
 WiFiClient wifiClient;
 MqttClient mqttClient(wifiClient);
 
+
 // MQTT - variables
-//const char broker[] = "test.mosquitto.org";
-const char broker[] = "broker.hivemq.com";
+const char broker[] = "broker.hivemq.com";  //"test.mosquitto.org"
 int port = 1883;
 
 String topic[] = {"base", "shoulder", "elbow", "wrist1", "wrist2", "wrist3"};
 
-    const char NTNU_TEST1[]  = "NTNU_TEST1"; //  "triplet/controller/base"
-    const char NTNU_TEST2[]  = "NTNU_TEST2";
-
-
-
 //set interval for sending messages (milliseconds)
-const long interval = 1000;
+const long interval = 100;
 unsigned long previousMillis = 0;
 
-int count = 0;
 
 // Encoder variables
 // Check connection in the datasheet at https://www.elfadistrelec.no/Web/Downloads/_t/ds/EMS22A50-B28-LS6_eng_tds.pdf
@@ -37,10 +31,10 @@ const int DO  = 10;   // encoder pin 4
 const int CS  = 9;    // encoder pin 6
 
 AbsEncoder Coder(CLK, DO, CS);
-int encoderPos[10];
-int prevEncoderPos[10];
 int encoderOffset[10];
 int encoderRotations[10];
+float encoderAngle[10];
+float prevEncoderAngle[10];
 
 
 void setup() {
@@ -76,6 +70,7 @@ void setup() {
     Serial.println(mqttClient.connectError());
 
     while (1) {
+      // status led (error)
       digitalWrite(LED_BUILTIN, HIGH);
       delay(50);
       digitalWrite(LED_BUILTIN, LOW);
@@ -91,73 +86,54 @@ void setup() {
 void loop() {
   // Read the value of all encoders.
   Coder.read();
-  calculatePos();
 
-  //Coder.plotAngles();
+  mqttClient.poll();  // keepalive the server connection
 
-  mqttClient.poll();
-
+  // continue when timer is ready
   unsigned long currentMillis = millis ();
-  if (currentMillis - previousMillis >= interval) {
+  if (currentMillis - previousMillis >= interval) {  
     // save the last time a message was sent
     previousMillis = currentMillis;
 
-    // send data to MQTT for all encoders
+    // send encoder angles to MQTT for all encoders
     for (int i = 0; i < Coder.getEncoderCount(); i++) {
+      // calculate angle of one encoder
+      calculateAngle(i);
+
       // info
       Serial.print("Sending message to topic: ");
       Serial.print(topic[i]);
       Serial.print("  Value: ");
       Serial.println(Coder.getAnalogData(i));
 
-      // send message
-      mqttClient.beginMessage("triplet/fromArduino/" + topic[i]);
-      mqttClient.print(encoderPos[i]);
-      mqttClient.endMessage();
+      // send message (only when data is different)
+      if (encoderAngle[i] != prevEncoderAngle[i]) {
+        mqttClient.beginMessage("triplet/fromArduino/" + topic[i]);
+        mqttClient.print(encoderAngle[i]);
+        mqttClient.endMessage();
+      }
+      prevEncoderAngle[i] = encoderAngle[i];
     }
-
-    //Enkoder 1
-    Serial.print("Sending message to topic: ");
-    Serial.print(NTNU_TEST1);
-    Serial.print("  Value: ");
-    Serial.println(Coder.getAnalogData(0));
-
-    Serial.print(Coder.getAnalogData(0));
-
-    mqttClient.beginMessage(NTNU_TEST1);
-    mqttClient.print(Coder.getAnalogData(0));
-    mqttClient.endMessage();
-    // Enkoder 2
-    Serial.print("Sending message to topic: ");
-    Serial.print(NTNU_TEST2);
-    Serial.print("  Value: ");
-    Serial.println(Coder.getAnalogData(1));
-
-    mqttClient.beginMessage(NTNU_TEST2);
-    mqttClient.print(Coder.getAnalogData(1));
-    Serial.print(Coder.getAnalogData(1));
-    mqttClient.endMessage();
-
-    delay(1);
   }
 }
 
-void calculatePos() {
-  for (int i = 0; i < Coder.getEncoderCount(); i++) {
-    encoderPos[i] = Coder.getAnalogData(i) - encoderOffset[i];
-    if (encoderPos[i] < 0) {
-      encoderPos[i] = Coder.getAnalogData(i) - encoderOffset[i] + 1024;
-    }
 
-    if (encoderPos[i] < 0) {
-      encoderRotations[i]--;
-    }
-    if (encoderPos[i] > 1023) {
-      encoderRotations[i]++;
-    }
+// calculate the angle for all encoders
+// includes calibration offset and rotation count
+void calculateAngle(int encoderNr) {
 
-    encoderPos[i] = encoderPos[i] + encoderRotations[i];
+  // save encoder posistion with calibration offset
+  int newEncoderPos = (Coder.getAnalogData(encoderNr) - encoderOffset[encoderNr]) % 1024;
+  float newEncoderAngle = newEncoderPos * (360. / 1024.); // convert to angle from 0 to 360
 
-    prevEncoderPos[i] = encoderPos[i];
+  // count rotations
+  if (newEncoderAngle - prevEncoderAngle[encoderNr] > 300) {
+    encoderRotations[encoderNr]++;
   }
+  if (newEncoderAngle - prevEncoderAngle[encoderNr] > -300) {
+    encoderRotations[encoderNr]--;
+  }
+
+  // calculate total angle
+  encoderAngle[encoderNr] = newEncoderAngle + encoderRotations[encoderNr] * 360;
 }
