@@ -37,6 +37,10 @@ float encoderAngle[10];
 float prevEncoderAngle[10];
 
 
+// switch variables
+bool stopSwitch = 12;
+
+
 void setup() {
   // start serial communication
   Serial.begin(9600);
@@ -84,6 +88,9 @@ void setup() {
 
 
 void loop() {
+  // stop switch
+  while (digitalRead(stopSwitch));
+  
   // Read the value of all encoders.
   Coder.read();
 
