@@ -17,6 +17,7 @@ MqttClient mqttClient(wifiClient);
 const char broker[] = "broker.hivemq.com";  //"test.mosquitto.org"
 int port = 1883;
 
+String mainTopic = "triplet/fromArduino/";
 String topic[] = {"base", "shoulder", "elbow", "wrist1", "wrist2", "wrist3"};
 
 //set interval for sending messages (milliseconds)
@@ -35,10 +36,14 @@ int encoderOffset[10];
 int encoderRotations[10];
 float encoderAngle[10];
 float prevEncoderAngle[10];
+float totalEncoderAngle[10];
+float prevTotalEncoderAngle[10];
 
 
 // switch variables
 bool stopSwitch = 12;
+
+bool ledpin = 13;
 
 
 void setup() {
@@ -46,7 +51,7 @@ void setup() {
   Serial.begin(9600);
 
   // initialize status LED
-  pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(ledpin, OUTPUT);
 
   // encoder setup
   Coder.begin();
@@ -89,39 +94,52 @@ void setup() {
 
 void loop() {
   // stop switch
-  while (digitalRead(stopSwitch));
-  
+  //while (digitalRead(stopSwitch));
+
   // Read the value of all encoders.
   Coder.read();
 
+  // send encoder angles to MQTT for all encoders
+  for (int i = 0; i < Coder.getEncoderCount(); i++) {
+    // calculate angle of one encoder
+    calculateAngle(i);
+    prevEncoderAngle[i] = encoderAngle[i];
+    Serial.println("");
+  }
   mqttClient.poll();  // keepalive the server connection
+
+
 
   // continue when timer is ready
   unsigned long currentMillis = millis ();
-  if (currentMillis - previousMillis >= interval) {  
+  if (currentMillis - previousMillis >= interval) {
     // save the last time a message was sent
     previousMillis = currentMillis;
+
+    //status led
+    digitalWrite(ledpin, HIGH);
 
     // send encoder angles to MQTT for all encoders
     for (int i = 0; i < Coder.getEncoderCount(); i++) {
       // calculate angle of one encoder
-      calculateAngle(i);
+      //Serial.println("");
 
       // info
-      Serial.print("Sending message to topic: ");
-      Serial.print(topic[i]);
-      Serial.print("  Value: ");
-      Serial.println(Coder.getAnalogData(i));
+      //Serial.print("Sending message to topic: ");
+      //Serial.print(topic[i]);
+      //Serial.print("  Value: ");
+      //Serial.println(encoderAngle[i]);
 
       // send message (only when data is different)
-      if (encoderAngle[i] != prevEncoderAngle[i]) {
-        mqttClient.beginMessage("triplet/fromArduino/" + topic[i]);
-        mqttClient.print(encoderAngle[i]);
+      if (totalEncoderAngle[i] != prevTotalEncoderAngle[i]) {
+        mqttClient.beginMessage(mainTopic + topic[i]);
+        mqttClient.print(constrain(totalEncoderAngle[i], -360, 360));
         mqttClient.endMessage();
+        prevTotalEncoderAngle[i] = totalEncoderAngle[i];
       }
-      prevEncoderAngle[i] = encoderAngle[i];
     }
   }
+  digitalWrite(ledpin, HIGH);
 }
 
 
@@ -131,16 +149,32 @@ void calculateAngle(int encoderNr) {
 
   // save encoder posistion with calibration offset
   int newEncoderPos = (Coder.getAnalogData(encoderNr) - encoderOffset[encoderNr]) % 1024;
-  float newEncoderAngle = newEncoderPos * (360. / 1024.); // convert to angle from 0 to 360
+  // fix arduino remainder bug
+  if (newEncoderPos < 0) {
+    newEncoderPos = 1024 + newEncoderPos;
+  }
 
+
+  float newEncoderAngle = newEncoderPos * (360. / 1024.); // convert to angle from 0 to 360
+  //Serial.print("prevEncoderAngle[encoderNr] ");
+  //Serial.println(prevEncoderAngle[encoderNr]);
+  //Serial.print("newEncoderAngle ");
+  //Serial.println(newEncoderAngle);
   // count rotations
   if (newEncoderAngle - prevEncoderAngle[encoderNr] > 300) {
-    encoderRotations[encoderNr]++;
-  }
-  if (newEncoderAngle - prevEncoderAngle[encoderNr] > -300) {
     encoderRotations[encoderNr]--;
   }
+  if (newEncoderAngle - prevEncoderAngle[encoderNr] < -300) {
+    encoderRotations[encoderNr]++;
+  }
+  //Serial.print("encoderRotations[encoderNr]");
+  //Serial.println(encoderRotations[encoderNr]);
 
   // calculate total angle
-  encoderAngle[encoderNr] = newEncoderAngle + encoderRotations[encoderNr] * 360;
+  totalEncoderAngle[encoderNr] = (newEncoderAngle + encoderRotations[encoderNr] * 360) - 360;
+  //Serial.print("newEncoderAngle ");
+  Serial.println(totalEncoderAngle[encoderNr]);
+  encoderAngle[encoderNr] = newEncoderAngle;
+  //Serial.print("encoderAngle ");
+  //Serial.println(encoderAngle[encoderNr]);
 }
