@@ -25,6 +25,7 @@ class AbsEncoder {
 
       // automatic detection of encoder count
       countEncoders();
+      encoderCount = 6;
     }
 
     void read() {
