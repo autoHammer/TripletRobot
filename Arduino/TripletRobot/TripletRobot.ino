@@ -21,7 +21,7 @@ String mainTopic = "triplet/fromArduino/";
 String topic[] = {"base", "shoulder", "elbow", "wrist1", "wrist2", "wrist3"};
 
 //set interval for sending messages (milliseconds)
-const long interval = 100;
+const long interval = 200;
 unsigned long previousMillis = 0;
 
 
@@ -43,7 +43,7 @@ float prevTotalEncoderAngle[10];
 // switch variables
 bool stopSwitch = 12;
 
-bool ledpin = 13;
+bool ledpin = 25;
 
 
 void setup() {
@@ -52,6 +52,7 @@ void setup() {
 
   // initialize status LED
   pinMode(ledpin, OUTPUT);
+  digitalWrite(ledpin, HIGH);
 
   // encoder setup
   Coder.begin();
@@ -89,27 +90,77 @@ void setup() {
   Serial.println("You're connected to the MQTT broker!");
   Serial.println();
 
+  Serial.println(Coder.getEncoderCount());
 }
 
 
 void loop() {
+
+  // check if mqtt is still online
+  if (!mqttClient.connected()) {
+    Serial.println("LOST MQTT");
+    if (!mqttClient.connect(broker, port)) {
+      Serial.print("MQTT connection failed! Error code = ");
+      Serial.println(mqttClient.connectError());
+
+      // status led (error)
+      digitalWrite(LED_BUILTIN, HIGH);
+      delay(500);
+      digitalWrite(LED_BUILTIN, LOW);
+      delay(30);
+
+    }
+  }
+
+  // check if WiFi is connected
+  if (!wifiClient.connected()) {
+    Serial.println("LOST WIFI");
+    // reconnect if disconnected
+    while (WiFi.begin(ssid, pass) != WL_CONNECTED) {
+      // failed, retry
+      Serial.print(".");
+      digitalWrite(LED_BUILTIN, HIGH);
+      delay(30);
+      digitalWrite(LED_BUILTIN, LOW);
+      delay(500);
+    }
+  }
+
+  mqttClient.poll();  // keepalive the server connection
+
   // stop switch
   //while (digitalRead(stopSwitch));
 
   // Read the value of all encoders.
   Coder.read();
 
-  // send encoder angles to MQTT for all encoders
   for (int i = 0; i < Coder.getEncoderCount(); i++) {
     // calculate angle of one encoder
     calculateAngle(i);
     prevEncoderAngle[i] = encoderAngle[i];
-    Serial.println("");
   }
-  mqttClient.poll();  // keepalive the server connection
 
 
+  // flip direction of wrist 3 and 1
+  totalEncoderAngle[1] = totalEncoderAngle[1] - 360;
+  totalEncoderAngle[2] = -totalEncoderAngle[2];
+  totalEncoderAngle[3] = totalEncoderAngle[3] - 360;
+  totalEncoderAngle[5] = -totalEncoderAngle[5];
 
+  Serial.print(totalEncoderAngle[0]);
+  Serial.print(" ");
+  Serial.print(totalEncoderAngle[1]);
+  Serial.print(" ");
+  Serial.print(totalEncoderAngle[2]);
+  Serial.print(" ");
+  Serial.print(totalEncoderAngle[3]);
+  Serial.print(" ");
+  Serial.print(totalEncoderAngle[4]);
+  Serial.print(" ");
+  Serial.println(totalEncoderAngle[5]);
+
+
+  // send encoder angles to MQTT for all encoders
   // continue when timer is ready
   unsigned long currentMillis = millis ();
   if (currentMillis - previousMillis >= interval) {
@@ -129,6 +180,7 @@ void loop() {
       //Serial.print(topic[i]);
       //Serial.print("  Value: ");
       //Serial.println(encoderAngle[i]);
+
 
       // send message (only when data is different)
       if (totalEncoderAngle[i] != prevTotalEncoderAngle[i]) {
@@ -171,9 +223,9 @@ void calculateAngle(int encoderNr) {
   //Serial.println(encoderRotations[encoderNr]);
 
   // calculate total angle
-  totalEncoderAngle[encoderNr] = (newEncoderAngle + encoderRotations[encoderNr] * 360) - 360;
+  totalEncoderAngle[encoderNr] = (newEncoderAngle + encoderRotations[encoderNr] * 360);
   //Serial.print("newEncoderAngle ");
-  Serial.println(totalEncoderAngle[encoderNr]);
+  //Serial.println(totalEncoderAngle[encoderNr]);
   encoderAngle[encoderNr] = newEncoderAngle;
   //Serial.print("encoderAngle ");
   //Serial.println(encoderAngle[encoderNr]);

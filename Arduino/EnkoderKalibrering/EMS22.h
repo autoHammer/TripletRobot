@@ -205,7 +205,7 @@ class AbsEncoder {
     void updateAnalogData() {
       /* Convert rawData  to AnalogData
       */
-      for (int c = 0; c < 2; c++) {
+      for (int c = 0; c < encoderCount; c++) {
         float result = 0;
         for (int i = 0, j = 9; i < 10; i++, j--) {  // i counts upwards, j counts down
           result += rawData[c][i] * pow(2, j);      // multiplies each bit with their respective exponent, and summs the result.
