@@ -1,0 +1,17 @@
+//CoDeSys Mapping Export V1.2
+//Mapped variable;//Parameter name @ counter in device;//Unit;//Description;//IEC address;//Device name;
+//Important: change only first, third or fourth column in Excel or add variable name before first ;
+;K-BUS diagnostics;;K-BUS diagnostics;%IB0;Kbus
+;K-BUS error;;K-BUS general error flag;%IX0.0;Kbus
+Application.GVL.Modbus_Recive_Base;;;;%IW1;LocalDeviceModbus
+Application.GVL.Modbus_Recive_Elbow;@1;;;%IW2;LocalDeviceModbus
+Application.GVL.Modbus_Recive_Sholder;@2;;;%IW3;LocalDeviceModbus
+Application.GVL.Modbus_Recive_Wrist1;@3;;;%IW4;LocalDeviceModbus
+Application.GVL.Modbus_Recive_Wrist2;@4;;;%IW5;LocalDeviceModbus
+Application.GVL.Modbus_Recive_wrist3;@5;;;%IW6;LocalDeviceModbus
+Application.GVL.Modbus_Send_Base;@6;;;%QW0;LocalDeviceModbus
+Application.GVL.Modbus_Send_Elbow;@7;;;%QW1;LocalDeviceModbus
+Application.GVL.Modbus_Send_Sholder;@8;;;%QW2;LocalDeviceModbus
+Application.GVL.Modbus_Send_Wrist1;@9;;;%QW3;LocalDeviceModbus
+Application.GVL.Modbus_Send_Wrist2;@10;;;%QW4;LocalDeviceModbus
+Application.GVL.Modbus_Send_Wrist3;@11;;;%QW5;LocalDeviceModbus
