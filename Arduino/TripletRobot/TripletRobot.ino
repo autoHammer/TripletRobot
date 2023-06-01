@@ -49,13 +49,16 @@ bool ledpin = 25;
 void setup() {
   // start serial communication
   Serial.begin(9600);
+  Serial.println("Starting communication");
 
   // initialize status LED
   pinMode(ledpin, OUTPUT);
   digitalWrite(ledpin, HIGH);
 
+  Serial.println("Testing encoder. . .");
   // encoder setup
   Coder.begin();
+  Serial.println("Started encoder");
 
   // get calibration numbers from storage
   EEPROM.get(0, encoderOffset);
@@ -142,11 +145,12 @@ void loop() {
 
 
   // flip direction of wrist 3 and 1
-  totalEncoderAngle[1] = totalEncoderAngle[1] - 360;
+  totalEncoderAngle[1] = totalEncoderAngle[1];
   totalEncoderAngle[2] = -totalEncoderAngle[2];
-  totalEncoderAngle[3] = totalEncoderAngle[3] - 360;
+  totalEncoderAngle[3] = totalEncoderAngle[3];
   totalEncoderAngle[5] = -totalEncoderAngle[5];
 
+  // quick debugging
   Serial.print(totalEncoderAngle[0]);
   Serial.print(" ");
   Serial.print(totalEncoderAngle[1]);
@@ -206,12 +210,8 @@ void calculateAngle(int encoderNr) {
     newEncoderPos = 1024 + newEncoderPos;
   }
 
-
   float newEncoderAngle = newEncoderPos * (360. / 1024.); // convert to angle from 0 to 360
-  //Serial.print("prevEncoderAngle[encoderNr] ");
-  //Serial.println(prevEncoderAngle[encoderNr]);
-  //Serial.print("newEncoderAngle ");
-  //Serial.println(newEncoderAngle);
+
   // count rotations
   if (newEncoderAngle - prevEncoderAngle[encoderNr] > 300) {
     encoderRotations[encoderNr]--;
@@ -219,14 +219,8 @@ void calculateAngle(int encoderNr) {
   if (newEncoderAngle - prevEncoderAngle[encoderNr] < -300) {
     encoderRotations[encoderNr]++;
   }
-  //Serial.print("encoderRotations[encoderNr]");
-  //Serial.println(encoderRotations[encoderNr]);
 
   // calculate total angle
   totalEncoderAngle[encoderNr] = (newEncoderAngle + encoderRotations[encoderNr] * 360);
-  //Serial.print("newEncoderAngle ");
-  //Serial.println(totalEncoderAngle[encoderNr]);
   encoderAngle[encoderNr] = newEncoderAngle;
-  //Serial.print("encoderAngle ");
-  //Serial.println(encoderAngle[encoderNr]);
 }

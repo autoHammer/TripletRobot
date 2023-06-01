@@ -24,7 +24,7 @@ class AbsEncoder {
       pinMode(CS, OUTPUT);
 
       // automatic detection of encoder count
-      countEncoders();
+      //countEncoders();
       encoderCount = 6;
     }
 
