@@ -11,7 +11,8 @@ app.config['MQTT_PASSWORD'] = ''  #'ntnuais2103'
 app.config['MQTT_KEEPALIVE'] = 5
 app.config['MQTT_TLS_ENABLED'] = False
 
-topic = 'triplet/#'
+topic = 'triplet/fromArduino/#'
+#topic = 'triplet/#'    # all topics
 
 mqtt = Mqtt(app)
 
@@ -26,18 +27,27 @@ def handle_mqtt_message(client, userdata, message):
         topic=message.topic,
         payload=message.payload.decode()
     )
-    print(f"Received data from mqtt: {data}")
+    print(f"Data from mqtt: {data}")
 
 while 1:
     time.sleep(3)
-    mqtt.publish("triplet/controller/base", 1024)
-    mqtt.publish("triplet/controller/shoulder", 768)
-    mqtt.publish("triplet/controller/elbow", 1024)
-    mqtt.publish("triplet/controller/wrist1", 768)
-    mqtt.publish("triplet/controller/wrist2", 1024)
-    mqtt.publish("triplet/controller/wrist3", 1024)
-    mqtt.publish("NTNU_TEST2", 90)
+
+    ''' send test data '''
+    mqtt.publish("triplet/simulator/base", 180)
+    mqtt.publish("triplet/simulator/shoulder",-90)
+    mqtt.publish("triplet/simulator/elbow", 90)
+    mqtt.publish("triplet/simulator/wrist1", 180)
+    mqtt.publish("triplet/simulator/wrist2", 90)
+    mqtt.publish("triplet/simulator/wrist3", 90)
+    print("Sent position")
     time.sleep(3)
-    mqtt.publish("triplet/controller/wrist1", 1024)
+
+    ''' rotate base '''
+    mqtt.publish("triplet/simulator/base", -180)
+    mqtt.publish("triplet/simulator/shoulder", -90)
+    mqtt.publish("triplet/simulator/elbow", 90)
+    mqtt.publish("triplet/simulator/wrist1", 180)
+    mqtt.publish("triplet/simulator/wrist2", 90)
+    mqtt.publish("triplet/simulator/wrist3", 90)
     
-    print("Sent Home position")
+    print("Sent position")
